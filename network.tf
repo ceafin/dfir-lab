@@ -15,18 +15,47 @@ resource "aws_vpc" "dfir_vpc" {
   tags       = merge(local.default_tags, { Name = "DFIR Lab VPC" })
 }
 
+# Internet Gateway for VPC
+resource "aws_internet_gateway" "dfir_igw" {
+  vpc_id = aws_vpc.dfir_vpc.id
+  tags   = merge(local.default_tags, { Name = "DFIR Lab Internet Gateway" })
+}
+
+# Route Table with the IGW
+resource "aws_route_table" "public_route_table" {
+  vpc_id = aws_vpc.dfir_vpc.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.dfir_igw.id
+  }
+
+  tags = merge(local.default_tags, { Name = "DFIR Lab Public Route Table" })
+}
+
 # Subnet for SIFT Workstation
 resource "aws_subnet" "sift_subnet" {
   vpc_id     = aws_vpc.dfir_vpc.id
   cidr_block = "10.86.1.0/24"
-  tags       = merge(local.default_tags, { Name = "DFIR SIFT Subnet" })
+  tags       = merge(local.default_tags, { Name = "DFIR Lab SIFT Subnet" })
 }
 
 # Subnet for Windows Server
 resource "aws_subnet" "windows_subnet" {
   vpc_id     = aws_vpc.dfir_vpc.id
   cidr_block = "10.86.2.0/24"
-  tags       = merge(local.default_tags, { Name = "DFIR Windows Subnet" })
+  tags       = merge(local.default_tags, { Name = "DFIR Lab Windows Subnet" })
+}
+
+# Associate the route table with the subnets to make them public
+resource "aws_route_table_association" "sift_subnet_association" {
+  subnet_id      = aws_subnet.sift_subnet.id
+  route_table_id = aws_route_table.public_route_table.id
+}
+
+resource "aws_route_table_association" "windows_subnet_association" {
+  subnet_id      = aws_subnet.windows_subnet.id
+  route_table_id = aws_route_table.public_route_table.id
 }
 
 # Security Group
@@ -73,6 +102,6 @@ resource "aws_security_group" "dfir_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags = merge(local.default_tags, { Name = "DFIR Security Group" })
+  tags = merge(local.default_tags, { Name = "DFIR Lab Security Group" })
 }
 
